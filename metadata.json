@@ -1,0 +1,6 @@
+{
+  "name": "BulkSend",
+  "description": "Load phone numbers from spreadsheets, customize templates, and send bulk SMS directly using your phone's carrier SIM card.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
