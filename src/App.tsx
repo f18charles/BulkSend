@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -292,20 +293,53 @@ export default function App() {
     }, 50);
   };
 
-  // CSV file uploader handler
+  // File uploader handler for both Excel (.xlsx, .xls) and CSV/text files
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (text) {
-        setPastedData(text);
-        setActiveTab('paste');
-      }
-    };
-    reader.readAsText(file);
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = event.target?.result;
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          
+          // Parse sheet as 2D array of rows
+          const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+          
+          // Map to TSV format for the clipboard/pastedData textarea
+          const tsvText = rows
+            .map(row => 
+              row.map(cell => (cell === null || cell === undefined) ? '' : String(cell).replace(/\t|\r|\n/g, ' ')).join('\t')
+            )
+            .join('\n');
+
+          setPastedData(tsvText);
+          setActiveTab('paste');
+          setParseError(null);
+        } catch (err) {
+          setParseError('Error reading Excel spreadsheet. Please verify the file is not corrupted.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (text) {
+          setPastedData(text);
+          setActiveTab('paste');
+          setParseError(null);
+        }
+      };
+      reader.readAsText(file);
+    }
   };
 
   // Clear or reset status
@@ -509,10 +543,10 @@ export default function App() {
                       <label className="text-xs font-semibold text-slate-600">Copy & Paste from Excel, Google Sheets, or CSV</label>
                       <label className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 cursor-pointer">
                         <Upload className="h-3 w-3" />
-                        <span>Upload CSV File Instead</span>
+                        <span>Upload Excel (.xlsx/.xls) or CSV</span>
                         <input 
                           type="file" 
-                          accept=".csv,.txt" 
+                          accept=".csv,.txt,.xlsx,.xls" 
                           onChange={handleFileUpload} 
                           className="hidden" 
                         />
