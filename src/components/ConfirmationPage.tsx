@@ -56,6 +56,10 @@ export default function ConfirmationPage({
   const pendingCount = totalCount - sentCount;
   const progressPercent = totalCount > 0 ? Math.round((sentCount / totalCount) * 100) : 0;
 
+  // Find the first recipient who hasn't been sent yet for sequential fast-sending
+  const nextPendingRecipient = recipients.find(r => !r.sent);
+  const nextPendingIndex = nextPendingRecipient ? recipients.indexOf(nextPendingRecipient) : -1;
+
   // Personalized text generator
   const getPersonalizedMessage = (name: string, phone: string) => {
     let msg = template;
@@ -118,6 +122,83 @@ export default function ConfirmationPage({
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-6 relative">
       
+      {/* Sequential Fast Dispatch Hub (Optimized for Mobile/Phone view) */}
+      {nextPendingRecipient ? (
+        <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-indigo-950 flex flex-col gap-4 relative overflow-hidden animate-in fade-in duration-200">
+          {/* Subtle glowing mesh backgrounds */}
+          <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div className="flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <Sparkles className="h-3 w-3" />
+              <span>Carrier SIM Quick Send Hub</span>
+            </div>
+            <span className="text-xs font-bold text-indigo-200">
+              Contact {nextPendingIndex + 1} of {totalCount}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <h3 className="text-base font-extrabold flex items-center gap-2">
+              <Smartphone className="h-4.5 w-4.5 text-indigo-400" />
+              <span>Send directly to: <span className="text-indigo-200">{nextPendingRecipient.name || 'Anonymous'}</span></span>
+            </h3>
+            <p className="text-xs font-mono text-indigo-300 font-semibold">{nextPendingRecipient.phone}</p>
+          </div>
+
+          {/* Body preview */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-indigo-100/90 leading-relaxed font-sans font-medium max-h-24 overflow-y-auto">
+            <span className="block text-[9px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Custom Message Preview:</span>
+            {getPersonalizedMessage(nextPendingRecipient.name, nextPendingRecipient.phone)}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
+            <a
+              href={getSingleSMSLink(nextPendingRecipient)}
+              onClick={() => {
+                toggleSentStatus(nextPendingRecipient.id);
+              }}
+              className="flex-1 py-3 px-4 font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition shadow-lg shadow-indigo-950/50 flex items-center justify-center gap-2 text-center"
+            >
+              <Smartphone className="h-4 w-4 animate-bounce" />
+              <span>📱 Tap to Send SMS Directly</span>
+            </a>
+            
+            <button
+              onClick={() => toggleSentStatus(nextPendingRecipient.id)}
+              className="px-4 py-3 bg-white/10 hover:bg-white/15 text-white text-xs font-bold rounded-xl transition border border-white/10 cursor-pointer"
+            >
+              Mark Sent (Skip)
+            </button>
+          </div>
+          
+          <div className="text-[10px] text-indigo-300/80 leading-normal flex items-start gap-1.5 border-t border-indigo-500/10 pt-2.5">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>How it works: Tapping the button opens your phone's native carrier SMS app. Press send in your SMS app, then simply switch back here. This controller will automatically update to the next contact!</span>
+          </div>
+        </div>
+      ) : (
+        totalCount > 0 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 text-center flex flex-col items-center gap-3 animate-in fade-in duration-200">
+            <div className="h-12 w-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-emerald-50">
+              <CheckCircle className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-emerald-900 text-sm">All Dispatches Completed!</h3>
+              <p className="text-xs text-emerald-700 max-w-md mx-auto">
+                Every contact in your active broadcast draft has been successfully marked as sent. Ready to wrap up?
+              </p>
+            </div>
+            <button
+              onClick={handleCompleteBroadcast}
+              className="mt-1 px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition cursor-pointer"
+            >
+              Finish & Save Broadcast Report
+            </button>
+          </div>
+        )
+      )}
+
       {/* Overview Delivery Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
         
@@ -325,7 +406,7 @@ export default function ConfirmationPage({
           </div>
 
           {/* Quick QR Sync code */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 border border-indigo-950/40 flex flex-col gap-2">
+          <div className="bg-slate-900 text-white rounded-2xl p-5 border border-indigo-950/40 hidden md:flex flex-col gap-2">
             <span className="block text-xs font-extrabold text-indigo-400">Scan to Sync with Mobile Phone</span>
             <p className="text-[11px] text-slate-400 leading-relaxed">
               If you want to complete this checklist on your smartphone touch screen, tap the QR link below. It syncs the entire broadcast database privately through local URL state parameters.

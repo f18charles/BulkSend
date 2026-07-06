@@ -219,7 +219,7 @@ export default function App() {
 
             <button
               onClick={() => setShowQRModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-xs cursor-pointer"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-xs cursor-pointer"
               id="btn_open_on_mobile"
             >
               <QrCode className="h-4 w-4 text-indigo-500" />

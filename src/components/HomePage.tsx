@@ -108,7 +108,7 @@ export default function HomePage({
           </div>
         </div>
 
-        <div className="shrink-0 flex flex-col items-center gap-3 bg-white/5 border border-white/10 p-5 rounded-2xl w-full md:w-auto relative z-10 md:min-w-[200px]">
+        <div className="shrink-0 hidden md:flex flex-col items-center gap-3 bg-white/5 border border-white/10 p-5 rounded-2xl w-full md:w-auto relative z-10 md:min-w-[200px]">
           <Smartphone className="h-10 w-10 text-indigo-400" />
           <div className="text-center">
             <span className="block text-xs font-bold text-slate-300">Run on Mobile</span>
@@ -210,7 +210,7 @@ export default function HomePage({
             <span className="font-bold text-indigo-600 block mb-0.5">Step 2</span>
             Compose text template. Use tag brackets like <code className="font-bold font-mono text-[10px] bg-white border px-1 rounded">{"{Name}"}</code>.
           </div>
-          <div>
+          <div className="hidden sm:block">
             <span className="font-bold text-indigo-600 block mb-0.5">Step 3</span>
             Open the broadcast on your mobile phone instantly by scanning the secure QR code.
           </div>
