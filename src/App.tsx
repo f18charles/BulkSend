@@ -63,6 +63,11 @@ export default function App() {
   // UI status modals
   const [showQRModal, setShowQRModal] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  
+  // Custom Public Base URL for Mobile Sync to bypass aistudio.google.com 403 blocks
+  const [customBaseUrl, setCustomBaseUrl] = useState<string>(() => {
+    return localStorage.getItem('bulk_sms_custom_base_url') || '';
+  });
 
   // Sync state to local storage
   useEffect(() => {
@@ -72,6 +77,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('bulk_sms_template', messageTemplate);
   }, [messageTemplate]);
+
+  useEffect(() => {
+    localStorage.setItem('bulk_sms_custom_base_url', customBaseUrl);
+  }, [customBaseUrl]);
 
   // Load URL-shared broadcast on mount
   useEffect(() => {
@@ -116,8 +125,15 @@ export default function App() {
         t: messageTemplate
       };
       const serialized = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-      const baseUrl = window.location.origin + window.location.pathname;
-      return `${baseUrl}#data=${serialized}`;
+      
+      let base = window.location.origin + window.location.pathname;
+      if (customBaseUrl.trim()) {
+        base = customBaseUrl.trim();
+      }
+      
+      // Ensure we don't have trailing slash issues before hash
+      const baseNormalized = base.endsWith('/') ? base.slice(0, -1) : base;
+      return `${baseNormalized}#data=${serialized}`;
     } catch (e) {
       return window.location.href;
     }
@@ -274,73 +290,132 @@ export default function App() {
       </main>
 
       {/* Campaign sync modal / QR sync overlay */}
-      {showQRModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in duration-200">
-            
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <QrCode className="h-5 w-5 text-indigo-600" />
-                <span className="font-extrabold text-slate-900 text-sm">Transfer Broadcast to Mobile</span>
-              </div>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      {showQRModal && (() => {
+        const isAistudioDomain = typeof window !== 'undefined' && 
+          (window.location.origin.includes('aistudio.google.com') || window.location.origin.includes('google.com'));
 
-            <div className="p-6 flex flex-col items-center text-center gap-4">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Scan this QR code with your mobile camera. It will securely copy the active contacts and template variables straight to your phone's browser so you can trigger carrier messages easily.
-              </p>
-
-              <div className="p-4 bg-white border-2 border-indigo-100 rounded-2xl shadow-xs">
-                <img 
-                  src={qrCodeImageURL} 
-                  alt="Broadcast QR Sync" 
-                  className="w-44 h-44 block"
-                />
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in duration-200">
+              
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-indigo-600" />
+                  <span className="font-extrabold text-slate-900 text-sm">Transfer Broadcast to Mobile</span>
+                </div>
+                <button
+                  onClick={() => setShowQRModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="w-full flex flex-col gap-1 text-left">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Direct browser Link:</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={currentAppShareURL}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 font-mono select-all focus:outline-hidden"
+              <div className="p-6 flex flex-col items-center text-center gap-4 max-h-[82vh] overflow-y-auto">
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Scan this QR code with your mobile camera. It will securely copy the active contacts and template variables straight to your phone's browser so you can trigger carrier messages easily.
+                </p>
+
+                {/* AI Studio domain warning to prevent 403 errors */}
+                {isAistudioDomain && (
+                  <div className="w-full bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3.5 text-left space-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                      <Info className="h-4 w-4 shrink-0 text-amber-600" />
+                      <span>AI Studio Editor Preview Notice</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-amber-800 font-medium">
+                      The default URL points to <code className="bg-amber-100/50 px-1 rounded font-mono text-[9px]">aistudio.google.com</code>, which requires a developer login. Scanning it on your mobile phone will result in a <span className="font-extrabold text-rose-600">403 Access Error</span>.
+                    </p>
+                    <div className="pt-1 space-y-1 text-[11px] text-amber-800">
+                      <span className="font-extrabold block">Simple solutions to sync successfully:</span>
+                      <ol className="list-decimal pl-4 space-y-1 font-medium">
+                        <li>
+                          Click the <span className="font-bold">"Open in a new tab"</span> icon in the top-right of your AI Studio preview frame header.
+                        </li>
+                        <li>
+                          Open this QR code modal from that new tab (where its direct <code className="bg-white px-1 rounded font-mono text-[9px] border">.run.app</code> address is fully public and accessible!).
+                        </li>
+                        <li>
+                          Or, copy the public <code className="font-mono text-[9px]">.run.app</code> URL from that tab and paste it in the field below to generate a working QR code right here.
+                        </li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-4 bg-white border-2 border-indigo-100 rounded-2xl shadow-xs">
+                  <img 
+                    src={qrCodeImageURL} 
+                    alt="Broadcast QR Sync" 
+                    className="w-44 h-44 block"
                   />
-                  <button
-                    onClick={handleCopyShareLink}
-                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shrink-0 flex items-center gap-1 cursor-pointer"
-                  >
-                    {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    <span>{copiedLink ? 'Copied' : 'Copy'}</span>
-                  </button>
+                </div>
+
+                {/* Custom URL Override Field */}
+                <div className="w-full text-left space-y-1 border-t border-slate-100 pt-3">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Custom Base App URL (Optional):
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={customBaseUrl}
+                      onChange={(e) => setCustomBaseUrl(e.target.value)}
+                      placeholder="e.g., https://ais-pre-....run.app"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 select-all focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-mono"
+                    />
+                    {customBaseUrl && (
+                      <button
+                        onClick={() => setCustomBaseUrl('')}
+                        className="px-2.5 py-1.5 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    Paste your public <code className="font-mono text-[9px]">.run.app</code> preview link here to dynamically replace the restricted editor URL.
+                  </p>
+                </div>
+
+                <div className="w-full flex flex-col gap-1 text-left border-t border-slate-100 pt-3">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sync Shareable Link:</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={currentAppShareURL}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 font-mono select-all focus:outline-hidden"
+                    />
+                    <button
+                      onClick={handleCopyShareLink}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shrink-0 flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-indigo-600 font-bold bg-indigo-50 border border-indigo-100/60 p-2.5 rounded-lg w-full text-left flex items-start gap-1.5">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>Zero Database Server tracking: All payload data is compiled directly in the hash parameters. No cloud storage is ever involved.</span>
                 </div>
               </div>
 
-              <div className="text-[10px] text-indigo-600 font-bold bg-indigo-50 border border-indigo-100/60 p-2.5 rounded-lg w-full text-left flex items-start gap-1.5">
-                <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>Zero Database Server tracking: All payload data is compiled directly in the hash parameters. No cloud storage is ever involved.</span>
+              <div className="px-5 py-3 border-t border-slate-100 flex justify-end bg-slate-50">
+                <button
+                  onClick={() => setShowQRModal(false)}
+                  className="px-4 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
-            </div>
 
-            <div className="px-5 py-3 border-t border-slate-100 flex justify-end bg-slate-50">
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="px-4 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition cursor-pointer"
-              >
-                Close
-              </button>
             </div>
-
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Footer bar */}
       <footer className="bg-slate-100 border-t border-slate-200 mt-auto py-6">
